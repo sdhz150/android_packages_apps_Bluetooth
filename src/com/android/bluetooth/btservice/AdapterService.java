@@ -1817,6 +1817,18 @@ public class AdapterService extends Service {
         }
     }
 
+    /**
+     * Update device UUID changed to {@link BondStateMachine}
+     *
+     * @param device remote device of interest
+     */
+    public void deviceUuidUpdated(BluetoothDevice device) {
+        // Notify BondStateMachine for SDP complete / UUID changed.
+        Message msg = mBondStateMachine.obtainMessage(BondStateMachine.UUID_UPDATE);
+        msg.obj = device;
+        mBondStateMachine.sendMessage(msg);
+    }
+
     boolean cancelBondProcess(BluetoothDevice device) {
         enforceCallingOrSelfPermission(BLUETOOTH_ADMIN_PERM, "Need BLUETOOTH ADMIN permission");
         byte[] addr = Utils.getBytesFromAddress(device.getAddress());
@@ -1977,6 +1989,12 @@ public class AdapterService extends Service {
             return false;
         }
 
+        if (pinCode.length != len) {
+            android.util.EventLog.writeEvent(0x534e4554, "139287605", -1,
+                    "PIN code length mismatch");
+            return false;
+        }
+
         byte[] addr = Utils.getBytesFromAddress(device.getAddress());
         return pinReplyNative(addr, accept, len, pinCode);
     }
@@ -1985,6 +2003,12 @@ public class AdapterService extends Service {
         enforceCallingOrSelfPermission(BLUETOOTH_PERM, "Need BLUETOOTH permission");
         DeviceProperties deviceProp = mRemoteDevices.getDeviceProperties(device);
         if (deviceProp == null || deviceProp.getBondState() != BluetoothDevice.BOND_BONDING) {
+            return false;
+        }
+
+        if (passkey.length != len) {
+            android.util.EventLog.writeEvent(0x534e4554, "139287605", -1,
+                    "Passkey length mismatch");
             return false;
         }
 
